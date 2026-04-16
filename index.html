@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>BubbleBirds</title>
+    <style>
+        html, body {
+            background: black;
+        }
+
+         .bubblestate, body {
+          width: 100vw;
+          height: 100vh;
+          overflow: hidden;
+        }
+
+        @keyframes pop {
+  from {transform: scale(1); background-image: none; background-color: rgba(255,255,255,.75); opacity:1}
+  to {transform: scale(2); background-image: none;  background-color: transparent; opacity:.5}
+}
+
+        .popped {
+          animation: pop 0.25s forwards;
+        }
+
+        .score {
+          font-family: 'Helvetica', 'Arial', sans-serif;
+          position: absolute;
+          top: 20px;
+          right: 20px;
+          color: white;
+          font-size: 24px;
+        }
+
+        </style>
+  </head>
+  <body>
+
+<div class="bubblestage">
+
+<div class="score">Pop the bubble of the bird you hear. Click anywhere to start!</div>
+
+</div>
+
+<script   src="https://code.jquery.com/jquery-3.7.1.min.js"   integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="   crossorigin="anonymous"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js" integrity="sha512-xi/RZRIF/S0hJ+yJJYuZ5yk6/8pCiRlEXZzoguSMl+vk2i3m6UjUO/WcZ11blRL/O+rnj94JRGwt/CHbc9+6EA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<script>
+
+  birds = ["amro", "blja", "grca", "piwo"];
+  bubblecount = 1
+
+$(document).ready(function() {
+    var stage = $(".bubblestage");
+    var width = stage.width() - 150;
+    var height = stage.height();
+
+    function createBubble(num) {
+        var bubble = $("<div class='bubble "+birds[num]+"'></div>");
+        bubble.css({
+            "position": "absolute",
+            "width": "150px",
+            "height": "150px",
+            "background-color": "rgba(255, 255, 255, 0.5)",
+            "border-radius": "50%",
+            "left": Math.random() * width + "px",
+            "top": "100vh",
+            "background-image": "url('birds/" + birds[num] + ".webp')",
+            "background-size": "cover",
+            "opacity": 0.95,
+            "outline": "1px solid rgba(255,255,255,0.5)",
+            "outline-offset": "-1px",
+        });
+        stage.append(bubble);
+        animateBubble(bubble);
+    }
+
+    function animateBubble(bubble) {
+        var duration = 5000 + Math.random() * 5000; // Random duration between 5-10 seconds
+        bubble.animate({ top: "-100vh" }, duration, function() {
+            bubble.remove();
+        });
+    }
+
+    var sound = new Howl({
+  src: ['sounds/amro.mp3']
+});
+
+    $(document).on("click", function() {
+        
+for (let i = 0; i < 4; i++) {
+  createBubble(i)
+}
+sound.stop();
+
+sound.play();
+
+    });
+
+    $(window).click(function(e) {
+        if ($(e.target).hasClass('bubble')) {
+          var bubble = $(e.target);
+          bubble.addClass('popped');
+          setTimeout(function() {
+            bubble.remove();
+          }, 200);
+          console.log("bubble clicked");
+        } else {
+          console.log('background clicked');
+        }
+
+        if ($(e.target).hasClass('amro')) {
+     console.log('amro clicked');
+     bubblecount++
+     $('.score').html(bubblecount);
+        } else {
+     bubblecount--
+     $('.score').html(bubblecount);
+        }
+
+      });
+
+  });
+
+</script>
+
+  </body>
+</html>
