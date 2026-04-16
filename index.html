@@ -62,8 +62,10 @@ $(document).ready(function() {
         var bubble = $("<div class='bubble "+birds[num]+"'></div>");
         bubble.css({
             "position": "absolute",
-            "width": "150px",
-            "height": "150px",
+            "width": "25vw",
+            "height": "25vw",
+            "max-width": "150px",
+            "max-height": "150px",
             "background-color": "rgba(255, 255, 255, 0.5)",
             "border-radius": "50%",
             "left": Math.random() * width + "px",
