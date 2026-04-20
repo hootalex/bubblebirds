@@ -172,7 +172,7 @@ $(document).ready(function() {
 
     function startNewRound() {
         if (birdData.length < 4) {
-            console.log('Not enough bird data loaded');
+            console.log('Not enough bird data loaded yet. Available:', birdData.length);
             return;
         }
 
@@ -183,6 +183,17 @@ $(document).ready(function() {
         // Update bird name
         $('#current-bird').text(randomBirds[0].title);
 
+        // Create bubbles for all 4 birds first
+        const bubblesCreated = randomBirds.map(bird => {
+            createBubble(bird);
+            return bird;
+        }).filter(bird => getThumbnailUrl(bird) !== null).length;
+
+        if (bubblesCreated === 0) {
+            console.log('Failed to create any bubbles');
+            return;
+        }
+
         // Play the bird's audio
         const audioUrl = getAudioUrl(randomBirds[0]);
         if (audioUrl) {
@@ -191,21 +202,24 @@ $(document).ready(function() {
             }
             currentBirdAudio = new Howl({
                 src: [audioUrl],
-                volume: 0.5
+                volume: 0.5,
+                onload: function() {
+                    console.log('Audio loaded successfully');
+                },
+                onerror: function() {
+                    console.error('Failed to load audio:', audioUrl);
+                }
             });
             currentBirdAudio.play();
             // Stop audio after 10 seconds max
             setTimeout(function() {
-                if (currentBirdAudio) {
+                if (currentBirdAudio && currentBirdAudio.playing()) {
                     currentBirdAudio.stop();
                 }
             }, 10000);
+        } else {
+            console.log('No audio URL available for this bird');
         }
-
-        // Create bubbles for all 4 birds
-        randomBirds.forEach(bird => {
-            createBubble(bird);
-        });
     }
 
     $(document).on("click", function(e) {
@@ -225,13 +239,20 @@ $(document).ready(function() {
                 bubble.remove();
             }, 250);
 
-            if (birdId == currentBirdId) {
+            if (String(birdId) === String(currentBirdId)) {
                 score++;
                 $('.score').text('Score: ' + score);
-                setTimeout(startNewRound, 1000);
+                console.log('Correct! Score:', score);
+                // Delay before next round to allow animation
+                setTimeout(function() {
+                    if (birdData.length > 0) {
+                        startNewRound();
+                    }
+                }, 800);
             } else {
                 score = Math.max(0, score - 1);
                 $('.score').text('Score: ' + score);
+                console.log('Wrong! Score:', score);
             }
         }
     });
