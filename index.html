@@ -10,28 +10,75 @@
             background: black;
         }
 
-         .bubblestate, body {
+         .bubblestage, body {
           width: 100vw;
           height: 100vh;
           overflow: hidden;
         }
 
+        .blur {
+          filter: blur(20px);
+        }
+  
+
         @keyframes pop {
   from {transform: scale(1); background-image: none; background-color: rgba(255,255,255,.75); opacity:1}
-  to {transform: scale(2); background-image: none;  background-color: transparent; opacity:.5}
+  to {transform: scale(2); background-image: none;  background-color: transparent; opacity:0}
+}
+
+        @keyframes scoreIncrease {
+  from {transform: scale(1.2); color: green;}
+  to {transform: scale(1); color: white}
+}
+
+        @keyframes scoreDecrease {
+  from {transform: scale(.8); color: red;}
+  to {transform: scale(1); color: white;}
 }
 
         .popped {
           animation: pop 0.25s forwards;
         }
 
+        .score-increase {
+          animation: scoreIncrease .5s;
+        }
+
+        .score-decrease {
+          animation: scoreDecrease .5s;
+        }
+
+        .score, .birdname {
+          color: white;
+          font-family: 'Arial', sans-serif;
+          font-size: 24px;
+          background: black;
+          padding: 5px;
+          border-radius: 5px;
+          z-index: 99;
+        }
+
         .score {
-          font-family: 'Helvetica', 'Arial', sans-serif;
           position: absolute;
           top: 20px;
           right: 20px;
-          color: white;
-          font-size: 24px;
+        }
+
+        .bubble {
+          background-size: cover;
+          background-position: center;
+          cursor: pointer;
+          transition: transform 0.1s;
+        }
+
+        .bubble:hover {
+          transform: scale(1.05);
+        }
+
+        .birdname {
+          position: absolute;
+          top: 20px;
+          left: 20px;
         }
 
         </style>
@@ -40,6 +87,7 @@
 
 <div class="bubblestage">
 
+<div class="birdname">Listening for: <span id="current-bird"></span></div>
 <div class="score">Pop the bubble of the bird you hear. Click anywhere to start!</div>
 
 </div>
@@ -50,16 +98,92 @@
 
 <script>
 
-  birds = ["amro", "blja", "grca", "piwo"];
-  bubblecount = 1
+let birdData = [];
+let currentBirdId = null;
+let currentBirdAudio = null;
+let score = 0;
+let gameStarted = false;
+let roundTimer = null;
+let happyPopSound = null;
+let sadPopSound = null;
+
+// Fetch bird data from Audubon using HTTPS to avoid mixed content
+const apiUrl = 'https://media.audubon.org/release/en/12.08/full_manifest.json';
+
+fetch(apiUrl)
+  .then(response => {
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+  })
+  .then(data => {
+    birdData = data.filter(bird => {
+      const files = bird.files || [];
+      const hasAudio = files.some(f => f.type === 'audio');
+      const hasThumb = files.some(f => f.type === 'thumbnail');
+      return hasAudio && hasThumb;
+    });
+    console.log(`Loaded ${birdData.length} birds with audio and thumbnails`);
+  })
+  .catch(error => {
+    console.error('Error loading bird data:', error);
+    alert('Failed to load bird data. Please check your internet connection and try again.');
+  });
+
+function getRandomBirds(count) {
+  const shuffled = [...birdData].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, Math.min(count, shuffled.length));
+}
+
+function getThumbnailUrl(bird) {
+  const files = bird.files || [];
+  const thumbnail = files.find(f => f.type === 'thumbnail');
+  if (thumbnail && thumbnail.resized_storage && thumbnail.resized_storage.convert) {
+    // Ensure HTTPS to avoid mixed content errors
+    return thumbnail.resized_storage.convert.path.replace(/^http:/, 'https:');
+  }
+  return null;
+}
+
+function getAudioUrl(bird) {
+  const files = bird.files || [];
+  const audio = files.find(f => f.type === 'audio');
+  if (audio && audio.original_path) {
+    // Ensure HTTPS to avoid mixed content errors
+    return audio.original_path.replace(/^http:/, 'https:');
+  }
+  return null;
+}
 
 $(document).ready(function() {
+
+$(".birdname").click(function(){
+  $(this).toggleClass("blur");
+});
+
+    // Initialize pop sounds
+    happyPopSound = new Howl({
+        src: ['happypop.mp3'],
+        volume: 0.5,
+        preload: true
+    });
+    
+    sadPopSound = new Howl({
+        src: ['sadpop.mp3'],
+        volume: 0.5,
+        preload: true
+    });
+
     var stage = $(".bubblestage");
     var width = stage.width() - 150;
     var height = stage.height();
 
-    function createBubble(num) {
-        var bubble = $("<div class='bubble "+birds[num]+"'></div>");
+    function createBubble(bird) {
+        const thumbnailUrl = getThumbnailUrl(bird);
+        if (!thumbnailUrl) return;
+
+        var bubble = $("<div class='bubble' data-bird-id='" + bird.id + "'></div>");
         bubble.css({
             "position": "absolute",
             "width": "25vw",
@@ -70,62 +194,175 @@ $(document).ready(function() {
             "border-radius": "50%",
             "left": Math.random() * width + "px",
             "top": "100vh",
-            "background-image": "url('birds/" + birds[num] + ".webp')",
+            "background-image": "url('" + thumbnailUrl + "')",
             "background-size": "cover",
+            "background-position": "center",
             "opacity": 0.95,
             "outline": "1px solid rgba(255,255,255,0.5)",
             "outline-offset": "-1px",
         });
+        bubble.attr('crossOrigin', 'anonymous');
         stage.append(bubble);
         animateBubble(bubble);
     }
 
     function animateBubble(bubble) {
-        var duration = 5000 + Math.random() * 5000; // Random duration between 5-10 seconds
+        var duration = 5000 + Math.random() * 5000;
         bubble.animate({ top: "-100vh" }, duration, function() {
             bubble.remove();
         });
     }
 
-    var sound = new Howl({
-  src: ['sounds/amro.mp3']
-});
+    function startNewRound() {
+        if (birdData.length < 4) {
+            console.log('Not enough bird data loaded yet. Available:', birdData.length);
+            return;
+        }
 
-    $(document).on("click", function() {
+        // Clear any existing round timer
+        if (roundTimer) {
+            clearTimeout(roundTimer);
+        }
+
+        // Get 4 random birds
+        const randomBirds = getRandomBirds(4);
+        currentBirdId = randomBirds[0].id;
+
+        // Update bird name
+        $('#current-bird').text(randomBirds[0].title);
+
+        // Create bubbles for all 4 birds first
+        const bubblesCreated = randomBirds.map(bird => {
+            createBubble(bird);
+            return bird;
+        }).filter(bird => getThumbnailUrl(bird) !== null).length;
+
+        if (bubblesCreated === 0) {
+            console.log('Failed to create any bubbles, trying again');
+            // If all bubbles failed, try again with different birds
+            setTimeout(startNewRound, 500);
+            return;
+        }
+
+        // Set timer to auto-progress to next round after bubbles finish animating
+        // Bubbles animate 5-10 seconds (5000 + random 0-5000), add 1.5 second buffer
+        roundTimer = setTimeout(function() {
+            console.log('Auto-progressing to next round, game started:', gameStarted);
+            if (gameStarted && birdData.length > 0) {
+                startNewRound();
+            }
+        }, 11500);
+
+        // Play the bird's audio
+        const audioUrl = getAudioUrl(randomBirds[0]);
         
-for (let i = 0; i < 4; i++) {
-  createBubble(i)
-}
-sound.stop();
+        if (audioUrl) {
+            if (currentBirdAudio) {
+                currentBirdAudio.stop();
+                currentBirdAudio.unload();
+            }
+            currentBirdAudio = new Howl({
+                src: [audioUrl],
+                volume: 0.5,
+                crossOrigin: 'anonymous',
+                html5: true,
+                preload: true,
+                onload: function() {
+                    console.log('Audio loaded successfully');
+                    currentBirdAudio.play();
+                    
+                    // Stop audio after 10 seconds max
+                    setTimeout(function() {
+                        if (currentBirdAudio && currentBirdAudio.playing()) {
+                            currentBirdAudio.stop();
+                        }
+                    }, 10000);
+                },
+                onerror: function() {
+                    console.error('Failed to load audio:', audioUrl);
+                }
+            });
+        } else {
+            console.log('No audio URL available for this bird');
+        }
+    }
 
-sound.play();
+    $(document).on("click", function(e) {
+        if (!gameStarted) {
+            gameStarted = true;
+            $('.score').text('Score: 0');
+            startNewRound();
+            return;
+        }
 
+        if ($(e.target).hasClass('bubble')) {
+            // Clear auto-progress timer when user interacts
+            if (roundTimer) {
+                clearTimeout(roundTimer);
+                roundTimer = null;
+            }
+
+            var bubble = $(e.target);
+            var birdId = bubble.data('bird-id');
+
+            bubble.addClass('popped');
+            setTimeout(function() {
+                bubble.remove();
+            }, 250);
+
+            if (String(birdId) === String(currentBirdId)) {
+                // Check if blur mode is active (double points)
+                const isBlurMode = $('.birdname').hasClass('blur');
+                score += isBlurMode ? 2 : 1;
+                
+                const $scoreEl = $('.score');
+                $scoreEl.addClass('score-increase');
+                $scoreEl.text('Score: ' + score);
+                console.log('Correct! Score:', score);
+                
+                // Play happy pop sound
+                if (happyPopSound) {
+                    happyPopSound.play();
+                }
+                
+                setTimeout(function() {
+                    $scoreEl.removeClass('score-increase');
+                }, 1000);
+                // Delay before next round to allow animation
+                setTimeout(function() {
+                    if (birdData.length > 0) {
+                        startNewRound();
+                    }
+                }, 800);
+            } else {
+                // Check if blur mode is active (double points deducted)
+                const isBlurMode = $('.birdname').hasClass('blur');
+                score = Math.max(0, score - (isBlurMode ? 2 : 1));
+                
+                const $scoreEl = $('.score');
+                $scoreEl.addClass('score-decrease');
+                $scoreEl.text('Score: ' + score);
+                console.log('Wrong! Score:', score);
+                
+                // Play sad pop sound
+                if (sadPopSound) {
+                    sadPopSound.play();
+                }
+                
+                setTimeout(function() {
+                    $scoreEl.removeClass('score-decrease');
+                }, 1000);
+                // Start a new round after a delay for wrong answers too
+                setTimeout(function() {
+                    if (birdData.length > 0) {
+                        startNewRound();
+                    }
+                }, 1000);
+            }
+        }
     });
 
-    $(window).click(function(e) {
-        if ($(e.target).hasClass('bubble')) {
-          var bubble = $(e.target);
-          bubble.addClass('popped');
-          setTimeout(function() {
-            bubble.remove();
-          }, 200);
-          console.log("bubble clicked");
-        } else {
-          console.log('background clicked');
-        }
-
-        if ($(e.target).hasClass('amro')) {
-     console.log('amro clicked');
-     bubblecount++
-     $('.score').html(bubblecount);
-        } else {
-     bubblecount--
-     $('.score').html(bubblecount);
-        }
-
-      });
-
-  });
+});
 
 </script>
 
