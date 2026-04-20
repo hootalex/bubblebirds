@@ -77,8 +77,11 @@ let currentBirdAudio = null;
 let score = 0;
 let gameStarted = false;
 
-// Fetch bird data from local manifest
-fetch('./manifest.json')
+// Fetch bird data from Audubon using CORS proxy
+const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+const apiUrl = 'http://media.audubon.org/release/en/12.08/full_manifest.json';
+
+fetch(proxyUrl + apiUrl)
   .then(response => response.json())
   .then(data => {
     birdData = data.filter(bird => {
@@ -89,7 +92,22 @@ fetch('./manifest.json')
     });
     console.log(`Loaded ${birdData.length} birds with audio and thumbnails`);
   })
-  .catch(error => console.error('Error loading bird data:', error));
+  .catch(error => {
+    console.error('Error loading bird data:', error);
+    // Fallback: try fetching without proxy for server environments
+    fetch(apiUrl)
+      .then(response => response.json())
+      .then(data => {
+        birdData = data.filter(bird => {
+          const files = bird.files || [];
+          const hasAudio = files.some(f => f.type === 'audio');
+          const hasThumb = files.some(f => f.type === 'thumbnail');
+          return hasAudio && hasThumb;
+        });
+        console.log(`Loaded ${birdData.length} birds with audio and thumbnails`);
+      })
+      .catch(error => console.error('Fallback also failed:', error));
+  });
 
 function getRandomBirds(count) {
   const shuffled = [...birdData].sort(() => Math.random() - 0.5);
