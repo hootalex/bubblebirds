@@ -77,12 +77,16 @@ let currentBirdAudio = null;
 let score = 0;
 let gameStarted = false;
 
-// Fetch bird data from Audubon using CORS proxy
-const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
-const apiUrl = 'http://media.audubon.org/release/en/12.08/full_manifest.json';
+// Fetch bird data from Audubon using HTTPS to avoid mixed content
+const apiUrl = 'https://media.audubon.org/release/en/12.08/full_manifest.json';
 
-fetch(proxyUrl + apiUrl)
-  .then(response => response.json())
+fetch(apiUrl)
+  .then(response => {
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+  })
   .then(data => {
     birdData = data.filter(bird => {
       const files = bird.files || [];
@@ -94,19 +98,7 @@ fetch(proxyUrl + apiUrl)
   })
   .catch(error => {
     console.error('Error loading bird data:', error);
-    // Fallback: try fetching without proxy for server environments
-    fetch(apiUrl)
-      .then(response => response.json())
-      .then(data => {
-        birdData = data.filter(bird => {
-          const files = bird.files || [];
-          const hasAudio = files.some(f => f.type === 'audio');
-          const hasThumb = files.some(f => f.type === 'thumbnail');
-          return hasAudio && hasThumb;
-        });
-        console.log(`Loaded ${birdData.length} birds with audio and thumbnails`);
-      })
-      .catch(error => console.error('Fallback also failed:', error));
+    alert('Failed to load bird data. Please check your internet connection and try again.');
   });
 
 function getRandomBirds(count) {
@@ -118,7 +110,8 @@ function getThumbnailUrl(bird) {
   const files = bird.files || [];
   const thumbnail = files.find(f => f.type === 'thumbnail');
   if (thumbnail && thumbnail.resized_storage && thumbnail.resized_storage.convert) {
-    return thumbnail.resized_storage.convert.path;
+    // Ensure HTTPS to avoid mixed content errors
+    return thumbnail.resized_storage.convert.path.replace(/^http:/, 'https:');
   }
   return null;
 }
@@ -127,7 +120,8 @@ function getAudioUrl(bird) {
   const files = bird.files || [];
   const audio = files.find(f => f.type === 'audio');
   if (audio && audio.original_path) {
-    return audio.original_path;
+    // Ensure HTTPS to avoid mixed content errors
+    return audio.original_path.replace(/^http:/, 'https:');
   }
   return null;
 }
@@ -159,6 +153,7 @@ $(document).ready(function() {
             "outline": "1px solid rgba(255,255,255,0.5)",
             "outline-offset": "-1px",
         });
+        bubble.attr('crossOrigin', 'anonymous');
         stage.append(bubble);
         animateBubble(bubble);
     }
@@ -203,6 +198,7 @@ $(document).ready(function() {
             currentBirdAudio = new Howl({
                 src: [audioUrl],
                 volume: 0.5,
+                crossOrigin: 'anonymous',
                 onload: function() {
                     console.log('Audio loaded successfully');
                 },
