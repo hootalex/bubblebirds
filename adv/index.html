@@ -105,6 +105,7 @@ let score = 0;
 let gameStarted = false;
 let roundTimer = null;
 let backupTimer = null;
+let roundInProgress = false;
 let happyPopSound = null;
 let sadPopSound = null;
 
@@ -222,12 +223,21 @@ $(".birdname").click(function(){
             return;
         }
 
-        // Clear any existing timers
+        // Prevent duplicate round starts
+        if (roundInProgress) {
+            console.log('Round already in progress, skipping');
+            return;
+        }
+        roundInProgress = true;
+
+        // Clear any existing timers only if we're not already in a timer callback
         if (roundTimer) {
             clearTimeout(roundTimer);
+            roundTimer = null;
         }
         if (backupTimer) {
             clearTimeout(backupTimer);
+            backupTimer = null;
         }
 
         // Get 4 random birds
@@ -245,6 +255,7 @@ $(".birdname").click(function(){
 
         if (bubblesCreated === 0) {
             console.log('Failed to create any bubbles, trying again');
+            roundInProgress = false;
             // If all bubbles failed, try again with different birds
             setTimeout(startNewRound, 500);
             return;
@@ -255,12 +266,11 @@ $(".birdname").click(function(){
         // Set timer to auto-progress to next round after bubbles finish animating
         // Bubbles animate 5-10 seconds (5000 + random 0-5000), add 1.5 second buffer
         roundTimer = setTimeout(function() {
-            console.log('Auto-progressing to next round');
-            // Clear the timer reference
+            console.log('Primary timer firing - auto-progressing to next round');
             roundTimer = null;
+            roundInProgress = false;
             // Always progress if game has started
             if (gameStarted && birdData.length > 0) {
-                console.log('Starting new round from auto-progress timer');
                 startNewRound();
             }
         }, 11500);
@@ -268,8 +278,8 @@ $(".birdname").click(function(){
         // Backup timer as additional safety net
         backupTimer = setTimeout(function() {
             console.log('Backup timer firing - ensuring next round loads');
-            if (gameStarted && birdData.length > 0) {
-                backupTimer = null;
+            backupTimer = null;
+            if (gameStarted && birdData.length > 0 && !roundInProgress) {
                 startNewRound();
             }
         }, 12500);
@@ -306,6 +316,9 @@ $(".birdname").click(function(){
         } else {
             console.log('No audio URL available for this bird');
         }
+        
+        // Mark round as fully initialized
+        roundInProgress = false;
     }
 
     $(document).on("click", function(e) {
@@ -317,11 +330,17 @@ $(".birdname").click(function(){
         }
 
         if ($(e.target).hasClass('bubble')) {
-            // Clear auto-progress timer when user interacts
+            // Clear all auto-progress timers when user interacts
             if (roundTimer) {
                 clearTimeout(roundTimer);
                 roundTimer = null;
             }
+            if (backupTimer) {
+                clearTimeout(backupTimer);
+                backupTimer = null;
+            }
+            // Reset round progress flag so new round can start
+            roundInProgress = false;
 
             var bubble = $(e.target);
             var birdId = bubble.data('bird-id');
