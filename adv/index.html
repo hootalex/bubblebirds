@@ -317,14 +317,10 @@ $(".birdname").click(function(){
         }
 
         if ($(e.target).hasClass('bubble')) {
-            // Clear all auto-progress timers when user interacts
+            // Clear auto-progress timer when user interacts
             if (roundTimer) {
                 clearTimeout(roundTimer);
                 roundTimer = null;
-            }
-            if (backupTimer) {
-                clearTimeout(backupTimer);
-                backupTimer = null;
             }
 
             var bubble = $(e.target);
