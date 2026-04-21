@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>BubbleBirds</title>
+    <style>
+       html, body {
+        background: black;
+        margin: 0;
+       }
+
+       @keyframes sway {
+  0% {
+    transform: translateX(0px);
+  }
+
+    50% {
+    transform: translateX(-100px);
+  }
+
+    30% {
+    transform: translateX(100px);
+  }
+
+    50% {
+    transform: translateX(70px);
+  }
+
+    75% {
+    transform: translateX(-20px);
+  }
+  100% {
+    transform: translateX(0px);
+  }
+}
+
+       @keyframes rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+
+    20% {
+    transform: rotate(-15deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+       @keyframes rise {
+  0% {
+    transform: translateY(calc(100vh + 200px));
+  }
+  100% {
+    transform: translateY(calc(0vh - 200px));
+  }
+}
+
+
+       .bubble{
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+        background-image: url('https://media.audubon.org/nas_birdapi_hero/sfw_fixed_01-29-2011-223.jpg?width=142&height=142&auto=webp&quality=90&precrop=579,579,x878,y107,safe&fit=crop&enable=upscale');
+        background-size: cover;
+        box-shadow: inset 5px 5px 50px -5px #FFFFFF, inset 0px 0px 0px 1px rgba(255,255,255,0.6);
+        opacity: .95;
+        animation: sway 10s infinite;
+        transform-origin: center;
+       }
+
+       .bubble:hover {
+         opacity: 1;
+       }
+
+
+         .bubblecontainer{
+                    width: 200px;
+        height: 200px;
+            transform-origin: center;
+            animation: rise 10s infinite;
+         }
+
+                  .bubblebox{
+                            width: 200px;
+        height: 200px;
+                    transform-origin: center;
+            animation: rotate 10s infinite;
+         }
+        </style>
+  </head>
+  <body>
+    <div class="bubblebox">
+<div class="bubblecontainer">
+    <div class="bubble">
+
+</div>
+</div>
+    </div>
+
+  </body>
+</html>

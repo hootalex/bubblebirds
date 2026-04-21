@@ -104,8 +104,6 @@ let currentBirdAudio = null;
 let score = 0;
 let gameStarted = false;
 let roundTimer = null;
-let backupTimer = null;
-let roundInProgress = false;
 let happyPopSound = null;
 let sadPopSound = null;
 
@@ -218,26 +216,12 @@ $(".birdname").click(function(){
     function startNewRound() {
         if (birdData.length < 4) {
             console.log('Not enough bird data loaded yet. Available:', birdData.length);
-            // Retry in a moment
-            setTimeout(startNewRound, 500);
             return;
         }
 
-        // Prevent duplicate round starts
-        if (roundInProgress) {
-            console.log('Round already in progress, skipping');
-            return;
-        }
-        roundInProgress = true;
-
-        // Clear any existing timers only if we're not already in a timer callback
+        // Clear any existing round timer
         if (roundTimer) {
             clearTimeout(roundTimer);
-            roundTimer = null;
-        }
-        if (backupTimer) {
-            clearTimeout(backupTimer);
-            backupTimer = null;
         }
 
         // Get 4 random birds
@@ -255,34 +239,19 @@ $(".birdname").click(function(){
 
         if (bubblesCreated === 0) {
             console.log('Failed to create any bubbles, trying again');
-            roundInProgress = false;
             // If all bubbles failed, try again with different birds
             setTimeout(startNewRound, 500);
             return;
         }
 
-        console.log('Round started with', bubblesCreated, 'bubbles');
-
         // Set timer to auto-progress to next round after bubbles finish animating
         // Bubbles animate 5-10 seconds (5000 + random 0-5000), add 1.5 second buffer
         roundTimer = setTimeout(function() {
-            console.log('Primary timer firing - auto-progressing to next round');
-            roundTimer = null;
-            roundInProgress = false;
-            // Always progress if game has started
+            console.log('Auto-progressing to next round, game started:', gameStarted);
             if (gameStarted && birdData.length > 0) {
                 startNewRound();
             }
         }, 11500);
-        
-        // Backup timer as additional safety net
-        backupTimer = setTimeout(function() {
-            console.log('Backup timer firing - ensuring next round loads');
-            backupTimer = null;
-            if (gameStarted && birdData.length > 0 && !roundInProgress) {
-                startNewRound();
-            }
-        }, 12500);
 
         // Play the bird's audio
         const audioUrl = getAudioUrl(randomBirds[0]);
@@ -316,9 +285,6 @@ $(".birdname").click(function(){
         } else {
             console.log('No audio URL available for this bird');
         }
-        
-        // Mark round as fully initialized
-        roundInProgress = false;
     }
 
     $(document).on("click", function(e) {
@@ -330,17 +296,11 @@ $(".birdname").click(function(){
         }
 
         if ($(e.target).hasClass('bubble')) {
-            // Clear all auto-progress timers when user interacts
+            // Clear auto-progress timer when user interacts
             if (roundTimer) {
                 clearTimeout(roundTimer);
                 roundTimer = null;
             }
-            if (backupTimer) {
-                clearTimeout(backupTimer);
-                backupTimer = null;
-            }
-            // Reset round progress flag so new round can start
-            roundInProgress = false;
 
             var bubble = $(e.target);
             var birdId = bubble.data('bird-id');

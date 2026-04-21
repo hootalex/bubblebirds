@@ -81,6 +81,72 @@
           left: 20px;
         }
 
+        .level {
+          color: white;
+          font-family: 'Arial', sans-serif;
+          font-size: 24px;
+          background: black;
+          padding: 5px;
+          border-radius: 5px;
+          z-index: 99;
+          position: absolute;
+          bottom: 20px;
+          left: 20px;
+        }
+
+        .game-end-screen {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          background: rgba(0, 0, 0, 0.95);
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          z-index: 1000;
+          color: white;
+          font-family: 'Arial', sans-serif;
+          text-align: center;
+        }
+
+        .game-end-screen h1 {
+          font-size: 48px;
+          margin-bottom: 30px;
+        }
+
+        .game-end-screen .final-score {
+          font-size: 36px;
+          margin-bottom: 20px;
+        }
+
+        .game-end-screen .final-level {
+          font-size: 36px;
+          margin-bottom: 40px;
+        }
+
+        .game-end-screen .game-over-text {
+          font-size: 24px;
+          margin-bottom: 30px;
+          color: #aaa;
+        }
+
+        .game-end-screen button {
+          padding: 15px 40px;
+          font-size: 24px;
+          background: white;
+          color: black;
+          border: none;
+          border-radius: 5px;
+          cursor: pointer;
+          font-weight: bold;
+        }
+
+        .game-end-screen button:hover {
+          background: #ddd;
+        }
+
         </style>
   </head>
   <body>
@@ -89,6 +155,7 @@
 
 <div class="birdname">Listening for: <span id="current-bird"></span></div>
 <div class="score">Pop the bubble of the bird you hear. Click anywhere to start!</div>
+<div class="level">Level: <span id="level">1</span></div>
 
 </div>
 
@@ -106,6 +173,9 @@ let gameStarted = false;
 let roundTimer = null;
 let happyPopSound = null;
 let sadPopSound = null;
+let level = 1;
+let bubblesPopped = 0;
+let bubbleCountThisRound = 0;
 
 // Fetch bird data from Audubon using HTTPS to avoid mixed content
 const apiUrl = 'https://media.audubon.org/release/en/12.08/full_manifest.json';
@@ -154,6 +224,32 @@ function getAudioUrl(bird) {
     return audio.original_path.replace(/^http:/, 'https:');
   }
   return null;
+}
+
+function endGame() {
+  gameStarted = false;
+  
+  if (roundTimer) {
+    clearTimeout(roundTimer);
+    roundTimer = null;
+  }
+  
+  if (currentBirdAudio) {
+    currentBirdAudio.stop();
+    currentBirdAudio.unload();
+  }
+  
+  // Create and show end game screen
+  const endScreen = $(`
+    <div class="game-end-screen">
+      <h1>Game Over</h1>
+      <div class="game-over-text">You reached Level ${level}</div>
+      <div class="final-score">Final Score: ${score}</div>
+      <button onclick="location.reload()">Play Again</button>
+    </div>
+  `);
+  
+  $('body').append(endScreen);
 }
 
 $(document).ready(function() {
@@ -224,14 +320,21 @@ $(".birdname").click(function(){
             clearTimeout(roundTimer);
         }
 
-        // Get 4 random birds
-        const randomBirds = getRandomBirds(4);
+        // Reset bubble pop counter for this round
+        bubblesPopped = 0;
+
+        // Calculate number of birds based on level (level 1 = 2 birds, level 2 = 3 birds, etc.)
+        const birdCount = Math.min(level + 1, birdData.length);
+        bubbleCountThisRound = birdCount;
+
+        // Get random birds based on level
+        const randomBirds = getRandomBirds(birdCount);
         currentBirdId = randomBirds[0].id;
 
         // Update bird name
         $('#current-bird').text(randomBirds[0].title);
 
-        // Create bubbles for all 4 birds first
+        // Create bubbles for all birds for this level
         const bubblesCreated = randomBirds.map(bird => {
             createBubble(bird);
             return bird;
@@ -247,9 +350,18 @@ $(".birdname").click(function(){
         // Set timer to auto-progress to next round after bubbles finish animating
         // Bubbles animate 5-10 seconds (5000 + random 0-5000), add 1.5 second buffer
         roundTimer = setTimeout(function() {
-            console.log('Auto-progressing to next round, game started:', gameStarted);
+            console.log('Round ended, bubbles popped this round:', bubblesPopped);
             if (gameStarted && birdData.length > 0) {
-                startNewRound();
+                // Check if any bubbles were popped
+                if (bubblesPopped === 0) {
+                    console.log('No bubbles popped! Game Over.');
+                    endGame();
+                } else {
+                    // Progress to next level
+                    level++;
+                    $('#level').text(level);
+                    startNewRound();
+                }
             }
         }, 11500);
 
@@ -290,6 +402,9 @@ $(".birdname").click(function(){
     $(document).on("click", function(e) {
         if (!gameStarted) {
             gameStarted = true;
+            level = 1;
+            score = 0;
+            $('#level').text(level);
             $('.score').text('Score: 0');
             startNewRound();
             return;
@@ -306,6 +421,8 @@ $(".birdname").click(function(){
             var birdId = bubble.data('bird-id');
 
             bubble.addClass('popped');
+            bubblesPopped++;
+            
             setTimeout(function() {
                 bubble.remove();
             }, 250);
@@ -331,18 +448,14 @@ $(".birdname").click(function(){
                 // Delay before next round to allow animation
                 setTimeout(function() {
                     if (birdData.length > 0) {
+                        level++;
+                        $('#level').text(level);
                         startNewRound();
                     }
                 }, 800);
             } else {
-                // Check if blur mode is active (double points deducted)
-                const isBlurMode = $('.birdname').hasClass('blur');
-                score = Math.max(0, score - (isBlurMode ? 2 : 1));
-                
-                const $scoreEl = $('.score');
-                $scoreEl.addClass('score-decrease');
-                $scoreEl.text('Score: ' + score);
-                console.log('Wrong! Score:', score);
+                // Wrong guess - end the game
+                console.log('Wrong bubble clicked! Game Over.');
                 
                 // Play sad pop sound
                 if (sadPopSound) {
@@ -350,14 +463,8 @@ $(".birdname").click(function(){
                 }
                 
                 setTimeout(function() {
-                    $scoreEl.removeClass('score-decrease');
-                }, 1000);
-                // Start a new round after a delay for wrong answers too
-                setTimeout(function() {
-                    if (birdData.length > 0) {
-                        startNewRound();
-                    }
-                }, 1000);
+                    endGame();
+                }, 500);
             }
         }
     });
