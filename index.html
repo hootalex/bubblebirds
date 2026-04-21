@@ -176,6 +176,7 @@ let sadPopSound = null;
 let level = 1;
 let bubblesPopped = 0;
 let bubbleCountThisRound = 0;
+let bubbleZIndex = 1;
 
 // Fetch bird data from Audubon using HTTPS to avoid mixed content
 const apiUrl = 'https://media.audubon.org/release/en/12.08/full_manifest.json';
@@ -296,6 +297,7 @@ $(".birdname").click(function(){
             "opacity": 0.95,
             "outline": "1px solid rgba(255,255,255,0.5)",
             "outline-offset": "-1px",
+            "z-index": bubbleZIndex++,
         });
         bubble.attr('crossOrigin', 'anonymous');
         stage.append(bubble);
@@ -303,7 +305,7 @@ $(".birdname").click(function(){
     }
 
     function animateBubble(bubble) {
-        var duration = 5000 + Math.random() * 5000;
+        var duration = 10000 + Math.random() * 5000;
         bubble.animate({ top: "-100vh" }, duration, function() {
             bubble.remove();
         });
@@ -320,6 +322,9 @@ $(".birdname").click(function(){
             clearTimeout(roundTimer);
         }
 
+        // Reset bubble z-index counter for new round
+        bubbleZIndex = 1;
+
         // Reset bubble pop counter for this round
         bubblesPopped = 0;
 
@@ -335,10 +340,14 @@ $(".birdname").click(function(){
         $('#current-bird').text(randomBirds[0].title);
 
         // Create bubbles for all birds for this level
-        const bubblesCreated = randomBirds.map(bird => {
+        // Create incorrect birds first, then correct bird last so it appears on top
+        const bubblesCreated = randomBirds.slice(1).map(bird => {
             createBubble(bird);
             return bird;
-        }).filter(bird => getThumbnailUrl(bird) !== null).length;
+        }).concat(randomBirds.slice(0, 1).map(bird => {
+            createBubble(bird);
+            return bird;
+        })).filter(bird => getThumbnailUrl(bird) !== null).length;
 
         if (bubblesCreated === 0) {
             console.log('Failed to create any bubbles, trying again');

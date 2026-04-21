@@ -335,10 +335,14 @@ $(".birdname").click(function(){
         $('#current-bird').text(randomBirds[0].title);
 
         // Create bubbles for all birds for this level
-        const bubblesCreated = randomBirds.map(bird => {
+        // Create incorrect birds first, then correct bird last so it appears on top
+        const bubblesCreated = randomBirds.slice(1).map(bird => {
             createBubble(bird);
             return bird;
-        }).filter(bird => getThumbnailUrl(bird) !== null).length;
+        }).concat(randomBirds.slice(0, 1).map(bird => {
+            createBubble(bird);
+            return bird;
+        })).filter(bird => getThumbnailUrl(bird) !== null).length;
 
         if (bubblesCreated === 0) {
             console.log('Failed to create any bubbles, trying again');
