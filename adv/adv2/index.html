@@ -17,7 +17,7 @@
         }
 
         .blur {
-          filter: blur(20px);
+          filter: blur(10px);
         }
   
 
@@ -26,29 +26,11 @@
   to {transform: scale(2); background-image: none;  background-color: transparent; opacity:0}
 }
 
-        @keyframes scoreIncrease {
-  from {transform: scale(1.2); color: green;}
-  to {transform: scale(1); color: white}
-}
-
-        @keyframes scoreDecrease {
-  from {transform: scale(.8); color: red;}
-  to {transform: scale(1); color: white;}
-}
-
         .popped {
           animation: pop 0.25s forwards;
         }
 
-        .score-increase {
-          animation: scoreIncrease .5s;
-        }
-
-        .score-decrease {
-          animation: scoreDecrease .5s;
-        }
-
-        .score, .birdname {
+        .birdname {
           color: white;
           font-family: 'Arial', sans-serif;
           font-size: 24px;
@@ -58,17 +40,12 @@
           z-index: 99;
         }
 
-        .score {
-          position: absolute;
-          top: 20px;
-          right: 20px;
-        }
-
         .bubble {
           background-size: cover;
           background-position: center;
           cursor: pointer;
           transition: transform 0.1s;
+          opacity: .85;
         }
 
         .bubble:hover {
@@ -116,11 +93,6 @@
           margin-bottom: 30px;
         }
 
-        .game-end-screen .final-score {
-          font-size: 36px;
-          margin-bottom: 20px;
-        }
-
         .game-end-screen .final-level {
           font-size: 36px;
           margin-bottom: 40px;
@@ -147,6 +119,53 @@
           background: #ddd;
         }
 
+        .game-start-screen {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          background: rgba(0, 0, 0, 0.95);
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          z-index: 1000;
+          color: white;
+          font-family: 'Arial', sans-serif;
+          text-align: center;
+        }
+
+        .game-start-screen h1 {
+          font-size: 64px;
+          margin-bottom: 30px;
+          font-weight: bold;
+        }
+
+        .game-start-screen .instructions {
+          font-size: 24px;
+          margin-bottom: 20px;
+          color: #aaa;
+          max-width: 600px;
+          line-height: 1.6;
+        }
+
+        .game-start-screen .start-button {
+          padding: 15px 40px;
+          font-size: 24px;
+          background: white;
+          color: black;
+          border: none;
+          border-radius: 5px;
+          cursor: pointer;
+          font-weight: bold;
+          margin-top: 30px;
+        }
+
+        .game-start-screen .start-button:hover {
+          background: #ddd;
+        }
+
         </style>
   </head>
   <body>
@@ -154,7 +173,6 @@
 <div class="bubblestage">
 
 <div class="birdname">Listening for: <span id="current-bird"></span></div>
-<div class="score">Pop the bubble of the bird you hear. Click anywhere to start!</div>
 <div class="level">Level: <span id="level">1</span></div>
 
 </div>
@@ -168,7 +186,6 @@
 let birdData = [];
 let currentBirdId = null;
 let currentBirdAudio = null;
-let score = 0;
 let gameStarted = false;
 let roundTimer = null;
 let happyPopSound = null;
@@ -244,15 +261,58 @@ function endGame() {
     <div class="game-end-screen">
       <h1>Game Over</h1>
       <div class="game-over-text">You reached Level ${level}</div>
-      <div class="final-score">Final Score: ${score}</div>
-      <button onclick="location.reload()">Play Again</button>
+      <button onclick="resetGame()">Play Again</button>
     </div>
   `);
   
   $('body').append(endScreen);
 }
 
+function resetGame() {
+  // Remove end game screen
+  $('.game-end-screen').fadeOut(300, function() {
+    $(this).remove();
+  });
+  
+  // Reset game state
+  level = 1;
+  gameStarted = true;
+  bubbleZIndex = 1;
+  
+  // Update UI
+  $('#level').text(level);
+  
+  // Start new game
+  startNewRound();
+}
+
+function showStartScreen() {
+  const startScreen = $(`
+    <div class="game-start-screen">
+      <h1>BubbleBirds</h1>
+      <div class="instructions">
+        Pop the bubble of the bird you hear!<br>
+        Each level adds more birds.<br>
+        Pick wrong and it's game over.
+      </div>
+      <button class="start-button">Click to Start</button>
+    </div>
+  `);
+  
+  $('body').append(startScreen);
+  
+  // Close start screen on any click or button click
+  startScreen.on('click', function() {
+    startScreen.fadeOut(300, function() {
+      startScreen.remove();
+    });
+  });
+}
+
 $(document).ready(function() {
+
+  // Show start screen on page load
+  showStartScreen();
 
 $(".birdname").click(function(){
   $(this).toggleClass("blur");
@@ -407,9 +467,7 @@ $(".birdname").click(function(){
         if (!gameStarted) {
             gameStarted = true;
             level = 1;
-            score = 0;
             $('#level').text(level);
-            $('.score').text('Score: 0');
             startNewRound();
             return;
         }
@@ -432,23 +490,12 @@ $(".birdname").click(function(){
             }, 250);
 
             if (String(birdId) === String(currentBirdId)) {
-                // Check if blur mode is active (double points)
-                const isBlurMode = $('.birdname').hasClass('blur');
-                score += isBlurMode ? 2 : 1;
-                
-                const $scoreEl = $('.score');
-                $scoreEl.addClass('score-increase');
-                $scoreEl.text('Score: ' + score);
-                console.log('Correct! Score:', score);
+                console.log('Correct!');
                 
                 // Play happy pop sound
                 if (happyPopSound) {
                     happyPopSound.play();
                 }
-                
-                setTimeout(function() {
-                    $scoreEl.removeClass('score-increase');
-                }, 1000);
                 // Delay before next round to allow animation
                 setTimeout(function() {
                     if (birdData.length > 0) {

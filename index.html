@@ -19,6 +19,10 @@
         .blur {
           filter: blur(20px);
         }
+
+        #logo {
+          width: 300px;
+        }
   
 
         @keyframes pop {
@@ -26,42 +30,18 @@
   to {transform: scale(2); background-image: none;  background-color: transparent; opacity:0}
 }
 
-        @keyframes scoreIncrease {
-  from {transform: scale(1.2); color: green;}
-  to {transform: scale(1); color: white}
-}
-
-        @keyframes scoreDecrease {
-  from {transform: scale(.8); color: red;}
-  to {transform: scale(1); color: white;}
-}
-
         .popped {
           animation: pop 0.25s forwards;
         }
 
-        .score-increase {
-          animation: scoreIncrease .5s;
-        }
-
-        .score-decrease {
-          animation: scoreDecrease .5s;
-        }
-
-        .score, .birdname {
-          color: white;
-          font-family: 'Arial', sans-serif;
+        .birdname {
+          color: #ffe500;
+          font-family: 'Helvetica', 'Arial', sans-serif;
           font-size: 24px;
           background: black;
           padding: 5px;
           border-radius: 5px;
           z-index: 99;
-        }
-
-        .score {
-          position: absolute;
-          top: 20px;
-          right: 20px;
         }
 
         .bubble {
@@ -82,16 +62,16 @@
         }
 
         .level {
-          color: white;
-          font-family: 'Arial', sans-serif;
+          color: #ffe500;
+          font-family: 'Helvetica', 'Arial', sans-serif;
           font-size: 24px;
           background: black;
           padding: 5px;
           border-radius: 5px;
           z-index: 99;
           position: absolute;
-          bottom: 20px;
-          left: 20px;
+          top: 20px;
+          right: 20px;
         }
 
         .game-end-screen {
@@ -106,19 +86,14 @@
           justify-content: center;
           align-items: center;
           z-index: 1000;
-          color: white;
-          font-family: 'Arial', sans-serif;
+          color: #ffe500;
+          font-family: 'Helvetica', 'Arial', sans-serif;
           text-align: center;
         }
 
         .game-end-screen h1 {
           font-size: 48px;
           margin-bottom: 30px;
-        }
-
-        .game-end-screen .final-score {
-          font-size: 36px;
-          margin-bottom: 20px;
         }
 
         .game-end-screen .final-level {
@@ -132,19 +107,54 @@
           color: #aaa;
         }
 
-        .game-end-screen button {
-          padding: 15px 40px;
-          font-size: 24px;
-          background: white;
-          color: black;
-          border: none;
-          border-radius: 5px;
-          cursor: pointer;
+        .game-start-screen {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          background: rgba(0, 0, 0, 0.95);
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          z-index: 1000;
+          color: #ffe500;
+          font-family: 'Helvetica', 'Arial', sans-serif;
+          text-align: center;
+        }
+
+        .game-start-screen h1 {
+          font-size: 64px;
+          margin-bottom: 30px;
           font-weight: bold;
         }
 
-        .game-end-screen button:hover {
-          background: #ddd;
+        .game-start-screen .instructions {
+          font-size: 24px;
+          margin-bottom: 20px;
+          color: #85ab8f;
+          max-width: 600px;
+          line-height: 1.1;
+        }
+
+        .instructions {
+          margin-top: 25px;
+        }
+
+        .game-start-screen .start-button, .game-end-screen button {
+          padding: 15px 40px;
+          font-size: 24px;
+          background: #ffe500;
+          color: black;
+          border: none;
+          border-radius: 50px;
+          cursor: pointer;
+          margin-top: 25px;
+        }
+
+        .game-start-screen .start-button:hover, .game-end-screen button:hover {
+          opacity: .9;
         }
 
         </style>
@@ -154,7 +164,6 @@
 <div class="bubblestage">
 
 <div class="birdname">Listening for: <span id="current-bird"></span></div>
-<div class="score">Pop the bubble of the bird you hear. Click anywhere to start!</div>
 <div class="level">Level: <span id="level">1</span></div>
 
 </div>
@@ -168,7 +177,6 @@
 let birdData = [];
 let currentBirdId = null;
 let currentBirdAudio = null;
-let score = 0;
 let gameStarted = false;
 let roundTimer = null;
 let happyPopSound = null;
@@ -245,7 +253,6 @@ function endGame() {
     <div class="game-end-screen">
       <h1>Game Over</h1>
       <div class="game-over-text">You reached Level ${level}</div>
-      <div class="final-score">Final Score: ${score}</div>
       <button onclick="location.reload()">Play Again</button>
     </div>
   `);
@@ -253,7 +260,33 @@ function endGame() {
   $('body').append(endScreen);
 }
 
+function showStartScreen() {
+  const startScreen = $(`
+    <div class="game-start-screen">
+      <img id="logo" src="bubblebirds.svg"/>
+      <div class="instructions">
+        Pop the bubble of the bird you hear!<br>
+        Each level adds more birds.<br>
+        Pop wrong and it's game over!
+      </div>
+      <button class="start-button">Start</button>
+    </div>
+  `);
+  
+  $('body').append(startScreen);
+  
+  // Close start screen on any click or button click
+  startScreen.on('click', function() {
+    startScreen.fadeOut(300, function() {
+      startScreen.remove();
+    });
+  });
+}
+
 $(document).ready(function() {
+
+  // Show start screen on page load
+  showStartScreen();
 
 $(".birdname").click(function(){
   $(this).toggleClass("blur");
@@ -412,9 +445,7 @@ $(".birdname").click(function(){
         if (!gameStarted) {
             gameStarted = true;
             level = 1;
-            score = 0;
             $('#level').text(level);
-            $('.score').text('Score: 0');
             startNewRound();
             return;
         }
@@ -437,23 +468,12 @@ $(".birdname").click(function(){
             }, 250);
 
             if (String(birdId) === String(currentBirdId)) {
-                // Check if blur mode is active (double points)
-                const isBlurMode = $('.birdname').hasClass('blur');
-                score += isBlurMode ? 2 : 1;
-                
-                const $scoreEl = $('.score');
-                $scoreEl.addClass('score-increase');
-                $scoreEl.text('Score: ' + score);
-                console.log('Correct! Score:', score);
+                console.log('Correct!');
                 
                 // Play happy pop sound
                 if (happyPopSound) {
                     happyPopSound.play();
                 }
-                
-                setTimeout(function() {
-                    $scoreEl.removeClass('score-increase');
-                }, 1000);
                 // Delay before next round to allow animation
                 setTimeout(function() {
                     if (birdData.length > 0) {
